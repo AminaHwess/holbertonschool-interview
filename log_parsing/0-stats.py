@@ -1,51 +1,48 @@
 #!/usr/bin/python3
+
 """
-log parsing
+Script that reads stdin line by line and computes metrics
 """
 
 import sys
-import re
+
+FileSize = 0
+STATUS = {
+    "200": 0,
+    "301": 0,
+    "400": 0,
+    "401": 0,
+    "403": 0,
+    "404": 0,
+    "405": 0,
+    "500": 0,
+}
+count = 0
 
 
-def output(log: dict) -> None:
-    """
-    helper function to display stats
-    """
-    print("File size: {}".format(log["file_size"]))
-    for code in sorted(log["code_frequency"]):
-        if log["code_frequency"][code]:
-            print("{}: {}".format(code, log["code_frequency"][code]))
+def print_stats():
+    """Prints file size and status codes"""
+    print("File size: {}".format(FileSize))
+    for key, value in sorted(STATUS.items()):
+        if value > 0:
+            print("{}: {}".format(key, value))
 
 
 if __name__ == "__main__":
-    regex = re.compile(
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (.{3}) (\d+)'
-    )  # nopep8
-
-    line_count = 0
-    log = {}
-    log["file_size"] = 0
-    log["code_frequency"] = {
-        str(code): 0 for code in [200, 301, 400, 401, 403, 404, 405, 500]
-    }
-
     try:
         for line in sys.stdin:
-            line = line.strip()
-            match = regex.fullmatch(line)
-            if match:
-                line_count += 1
-                code = match.group(1)
-                file_size = int(match.group(2))
+            parts = line.split()
+            if len(parts) >= 2:
+                try:
+                    FileSize += int(parts[-1])
+                except ValueError:
+                    pass
 
-                # File size
-                log["file_size"] += file_size
+                if parts[-2] in STATUS:
+                    STATUS[parts[-2]] += 1
 
-                # status code
-                if code.isdecimal():
-                    log["code_frequency"][code] += 1
-
-                if line_count % 10 == 0:
-                    output(log)
+            count += 1
+            if count % 10 == 0:
+                print_stats()
     finally:
-        output(log)
+        print_stats()
